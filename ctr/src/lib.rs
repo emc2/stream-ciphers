@@ -42,6 +42,9 @@
 extern crate block_cipher_trait;
 pub extern crate stream_cipher;
 
+#[cfg(cargo_feature = "zeroize")]
+extern crate zeroize;
+
 use stream_cipher::{
     InvalidKeyNonceLength, LoopError, NewStreamCipher, SyncStreamCipher, SyncStreamCipherSeek,
 };
@@ -50,6 +53,11 @@ use block_cipher_trait::generic_array::typenum::{Unsigned, U16};
 use block_cipher_trait::generic_array::{ArrayLength, GenericArray};
 use block_cipher_trait::BlockCipher;
 use core::{cmp, fmt, mem, ptr};
+
+#[cfg(cargo_feature = "zeroize")]
+use zeroize::Zeroize;
+#[cfg(cargo_feature = "zeroize")]
+use std::ops::Drop;
 
 #[inline(always)]
 fn xor(buf: &mut [u8], key: &[u8]) {
@@ -74,6 +82,24 @@ where
     counter: u64,
     block: Block<C>,
     pos: Option<u8>,
+}
+
+#[cfg(cargo_feature = "zeroize")]
+impl<C: Zeroize> Zeroize for Ctr128<C> {
+    fn zeroize(&mut self) {
+        self.cipher.zeroize();
+        self.nonce.zeroize();
+        self.counter.zeroize();
+        self.block.zeroize();
+        self.pos.zeroize();
+    }
+}
+
+#[cfg(cargo_feature = "zeroize")]
+impl<C> Drop for Ctr128<C> {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
 }
 
 impl<C> Ctr128<C>

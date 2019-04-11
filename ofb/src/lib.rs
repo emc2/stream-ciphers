@@ -53,10 +53,18 @@
 extern crate block_cipher_trait;
 pub extern crate stream_cipher;
 
+#[cfg(cargo_feature = "zeroize")]
+extern crate zeroize;
+
 use block_cipher_trait::generic_array::typenum::Unsigned;
 use block_cipher_trait::generic_array::GenericArray;
 use block_cipher_trait::BlockCipher;
 use stream_cipher::{InvalidKeyNonceLength, LoopError, NewStreamCipher, SyncStreamCipher};
+
+#[cfg(cargo_feature = "zeroize")]
+use zeroize::Zeroize;
+#[cfg(cargo_feature = "zeroize")]
+use std::ops::Drop;
 
 type Block<C> = GenericArray<u8, <C as BlockCipher>::BlockSize>;
 
@@ -65,6 +73,22 @@ pub struct Ofb<C: BlockCipher> {
     cipher: C,
     block: Block<C>,
     pos: usize,
+}
+
+#[cfg(cargo_feature = "zeroize")]
+impl<C: Zeroize> Zeroize for Cfb8<C> {
+    fn zeroize(&mut self) {
+        self.cipher.zeroize();
+        self.block.zeroize();
+        self.pos.zeroize();
+    }
+}
+
+#[cfg(cargo_feature = "zeroize")]
+impl<C> Drop for Cfb8<C> {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
 }
 
 impl<C: BlockCipher> NewStreamCipher for Ofb<C> {
